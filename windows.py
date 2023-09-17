@@ -81,7 +81,7 @@ class MainWindow(QMainWindow):
             ChooseCorrectFile()
     
     def open_source_code_site(self):
-        webbrowser.open_new_tab("https://github.com/skrzypa/FLAC_MP3_tag")
+        webbrowser.open_new_tab("https://github.com/skrzypa/mp3_flac_tag")
     
 
 
