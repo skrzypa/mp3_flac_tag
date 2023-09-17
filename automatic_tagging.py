@@ -1,0 +1,124 @@
+from mutagen.flac import FLAC, Picture
+from mutagen.mp3 import EasyMP3
+from mutagen.id3 import APIC, ID3
+
+import pathlib
+import re
+
+import windows
+
+
+
+class AutomaticTagging:
+    def __init__(self, tracklist_file_path: str):
+        self.photo_formats = ('png', 'jpg', 'jpeg')
+        self.music_formats = ('.mp3', ".flac")
+
+        self.prohibited_signs_in_file_name = ["\"", "\\", "/", ":", "|", "<", ">", "*", "?"]
+
+        self.folder_path = pathlib.Path(tracklist_file_path).parent
+        self.tracklist_file = tracklist_file_path
+
+        self.music_files, self.music_files_formats = [], []
+
+        for file in self.folder_path.iterdir():
+            file = str(file)
+
+            song_name = file.split("\\")[-1]
+
+            if file.endswith(self.music_formats):
+                self.music_files.append(file)
+                self.music_files_formats.append(
+                            re.findall(f"({'|'.join(self.music_formats)})", song_name)[-1]
+                            )
+
+            elif file.endswith(self.photo_formats):
+                self.cover_file = file
+        
+        self.len_of_music_files = len(self.music_files)
+        
+        self._read_tracklist_file()
+
+
+    def _read_tracklist_file(self):
+        
+        self.titles = []
+        with open(self.tracklist_file, mode= 'r', encoding= "UTF-8") as tracklist:
+            reader = tracklist.readlines()
+            for line, row in enumerate(reader):
+                if line == 0:
+                    self.artist = row.strip()
+                elif line == 1:
+                    self.album_title = row.strip()
+                elif line == 2:
+                    self.year = row.strip()
+                elif line == 3:
+                    self.genre = row.strip()
+                else:
+                    self.titles.append(row.strip())
+        
+
+
+    def tag_music_file(self, nr, old_file, title, file_format):
+        #for nr, (file, file_format, title) in enumerate(zip(self.music_files, self.music_files_formats, titles), start= 1):
+
+        self.nr = str(nr).zfill(len(str(self.len_of_music_files)))
+        self.title = title
+
+        # renaming a file along with checking that the name does not contain prohibited characters 
+        correct_title = title
+        for char in correct_title:
+            if char in self.prohibited_signs_in_file_name:
+                correct_title: str = correct_title.replace(char, "_")
+        file = pathlib.Path(str(old_file)).rename(f"{self.folder_path}\\{self.nr}. {correct_title}{file_format}")
+        
+        if file_format == '.flac':
+            file = FLAC(file)
+            self._tag_mp3_flac(file)
+            self._add_img_flac(file, self.cover_file)
+        elif file_format == '.mp3':
+            self._tag_mp3_flac(EasyMP3(file))
+            self._add_img_mp3(file, self.cover_file)
+
+
+    def _tag_mp3_flac(self, file: FLAC | EasyMP3):
+        file['artist'] = self.artist
+        file['album'] = self.album_title
+        file['title'] = self.title
+        file['date'] = self.year
+        file['genre'] = self.genre
+        file['tracknumber'] = self.nr
+        file.save()
+
+
+    def _add_img_flac(self, file_path: FLAC, img_path):
+        audio = file_path
+        image_path = img_path
+        with open(image_path, 'rb') as img:
+            image_data = img.read()
+
+        picture = Picture()
+        picture.type = 3  # 3 = front cover
+        picture.mime = 'image/jpeg'  # MIME type dla obrazka (tutaj JPEG)
+        picture.desc = 'Cover'  # Opis okładki (możesz zmienić na swoje potrzeby)
+        picture.data = image_data  # Dane obrazka
+
+        audio.add_picture(picture)
+        audio.save()
+
+
+    def _add_img_mp3(self, file_path, img_path):
+        audio = ID3(file_path)
+
+        audio.delall('APIC')
+        
+        image_path = img_path
+        audio.add(
+            APIC(  
+                encoding=3,         # 3 = UTF-8 (Unicode)
+                mime='image/jpeg',  # MIME type dla obrazka (tutaj JPEG)
+                type=3,             # 3 = front cover
+                desc=u'Cover',      # Opis okładki (możesz zmienić na swoje potrzeby)
+                data= open(image_path, 'rb').read()     # Dane obrazka
+        ))
+        audio.save()
