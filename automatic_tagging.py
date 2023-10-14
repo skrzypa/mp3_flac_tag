@@ -5,11 +5,16 @@ from mutagen.id3 import APIC, ID3
 import pathlib
 import re
 
-import windows
-
 
 
 class AutomaticTagging:
+    """
+    Example:\n 
+    at = AutomaticTagging("path/to/tracklist.txt")\n
+    for nr, (file, title, file_format) in enumerate(zip(at.music_files, at.titles, at.music_files_formats), start= 1):\n
+        \tat.tag_music_file(nr, file, title, file_format)
+        
+    """
     def __init__(self, tracklist_file_path: str):
         self.photo_formats = ('png', 'jpg', 'jpeg')
         self.music_formats = ('.mp3', ".flac")
