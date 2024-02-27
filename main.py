@@ -1,20 +1,9 @@
-from flet import (
-    Page, 
-    FilePickerResultEvent,
-    FilePicker,
-    AlertDialog, 
-    Text,
-    ElevatedButton,
-    Container,
-    app,
-    icons,
-    Column,
-    alignment,
-    )
+from flet import *
 
 
 from pathlib import Path
 import time
+import json
 
 
 import paths_settings
@@ -25,8 +14,9 @@ from automatic_tagging import AutomaticTagging
 def main(page: Page):
     page.title = "mp3 & flac tagger"
     page.window_center()
-    page.window_height, page.window_width = 300, 500
-    page.window_max_height, page.window_max_width = 300, 500
+    page.window_width, page.window_height = paths_settings.RES_X, paths_settings.RES_Y
+    page.window_max_width, page.window_max_height = paths_settings.RES_X, paths_settings.RES_Y
+    page.window_min_width, page.window_min_height = paths_settings.RES_X, paths_settings.RES_Y
     page.scroll = True
 
 
@@ -35,11 +25,7 @@ def main(page: Page):
             dialog.open = False
             page.update()
 
-        at = AutomaticTagging(
-            str(
-                Path(e.files[0].path)
-            )
-        )
+        at = AutomaticTagging(str(Path(e.files[0].path)))
 
         start = time.time()
 
@@ -56,9 +42,11 @@ def main(page: Page):
             
             progress_proc = round(100 * (int(nr) / int(at.len_of_music_files)), 2)
 
-            dialog.content = Text(
-                    value= f"{str(nr).zfill(len(str(at.len_of_music_files)))}/{at.len_of_music_files}. {title}\n{paths_settings.PROGRESS}: {progress_proc}%"
-                )
+            dialog.content = Column(controls= [
+                Text(value= f"{str(nr).zfill(len(str(at.len_of_music_files)))}/{at.len_of_music_files}. {title}"),
+                Text(value= f"{paths_settings.PROGRESS}: {progress_proc}%"),
+                ProgressBar(width= 400, value= round(progress_proc / 100, 2), color= 'amber'),
+            ]) 
 
             dialog.update()
             
@@ -78,51 +66,73 @@ def main(page: Page):
             )
         ]
         dialog.update()
+    
+
+    def change_language(event: ControlEvent):
+        langs = {k:v for k,v in zip(paths_settings.LANGUAGES, paths_settings.LANGUAGES_CODES)}
+        choosen_lang = langs[event.control.text]
+
+        with open(file= Path(paths_settings.PATH, 'settings.json'), mode='r', encoding= "UTF-8") as file:
+            load = json.load(fp= file)
+            load['language'] = choosen_lang
+        
+        with open(file= Path(paths_settings.PATH, 'settings.json'), mode='w', encoding= "UTF-8") as file:
+            json.dump(obj= load, fp= file, indent= 4)
+
+        page.window_close()
 
 
-    pick_file = FilePicker(
-        on_result= choose_file
-    )
-    choosen_file = Text()
+    pick_file = FilePicker(on_result= choose_file)
     page.overlay.append(pick_file)
 
     page.add(
         Container(
-            padding= 5,
-            height= 50,
-            width= 490,
-        ),
-
-        Container(
-            ElevatedButton(
-                text= Text(value= paths_settings.CHOOSE_FILE).value,
-                on_click= lambda _: pick_file.pick_files(
-                    allowed_extensions= ["txt"],
-                ),
-                icon= icons.UPLOAD_FILE,
+            alignment= alignment.center, 
+            content= Text(
+                value= paths_settings.CHANGE_LANGUAGE, 
+                text_align= TextAlign.CENTER,
+                selectable= False,
+                size= 25,
             ),
-            padding= 5,
-            height= 50,
-            width= 490,
+        ),
+
+        ResponsiveRow(
+            controls= [
+                Container(
+                    col= 3,
+                    content= ElevatedButton(
+                        text= lang, 
+                        on_click= change_language,
+                        bgcolor= colors.RED,
+                        color= colors.BLACK,
+                    ),  
+                ) for lang in paths_settings.LANGUAGES
+            ],
         ),
 
         Container(
-            ElevatedButton(
+            alignment= alignment.center, 
+            margin= Margin(0, 20, 0, 0), 
+            content= ElevatedButton(
+                text= Text(value= paths_settings.CHOOSE_FILE).value,
+                on_click= lambda _: pick_file.pick_files(allowed_extensions= ["txt"],),
+                icon= icons.UPLOAD_FILE,
+                height= 40,
+                width= 0.9 * paths_settings.RES_X,
+            ),
+        ),
+
+        Container(
+            alignment= alignment.center,
+            content= ElevatedButton(
                 text= Text(value= paths_settings.SOURCE_CODE).value,
                 icon= icons.OPEN_IN_BROWSER,
+                url= "https://github.com/skrzypa/mp3_flac_tag",
+                height= 40,
+                width= 0.9 * paths_settings.RES_X,
             ),
-            padding= 5,
-            height= 50,
-            width= 490,
-            url= "https://github.com/skrzypa/mp3_flac_tag",
         ),
-        
-        Container(
-            padding= 5,
-            height= 50,
-            width= 490,
-        ),
-    ),
+    )
 
 
 app(target= main)

@@ -49,18 +49,13 @@ class AutomaticTagging:
         
         self.titles = []
         with open(self.tracklist_file, mode= 'r', encoding= "UTF-8") as tracklist:
-            reader = tracklist.readlines()
-            for line, row in enumerate(reader):
-                if line == 0:
-                    self.artist = row.strip()
-                elif line == 1:
-                    self.album_title = row.strip()
-                elif line == 2:
-                    self.year = row.strip()
-                elif line == 3:
-                    self.genre = row.strip()
-                else:
-                    self.titles.append(row.strip())
+            reader = [row.strip() for row in tracklist.readlines()]
+            
+        self.artist: str = reader[0]
+        self.album_title: str = reader[1]
+        self.year: str = reader[2]
+        self.genre: str = reader[3]
+        self.titles: list = reader[4:]
         
 
 

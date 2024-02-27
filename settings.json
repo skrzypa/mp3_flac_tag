@@ -1,3 +1,7 @@
 {
-    "language": "PL"
+    "language": "PL",
+    "resolution": [
+        500,
+        300
+    ]
 }
